@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <signal.h>
+#include <poll.h>
 #include "constants.h"
 #include "server.h"
 #include "prompt.h"
@@ -75,6 +76,9 @@ Result FreeServerSocket() {
 
 
 void ForkForClient(int clientSocket) {
+    // save the parent id
+    int parentPID = getpid();
+
     // fork a new process specially for the client
     int pid = fork();
 
@@ -88,10 +92,32 @@ void ForkForClient(int clientSocket) {
 
     // run until the client closes the connection
     while (true) {
+        // check if the server is still running
+        if (getppid() != parentPID) {
+            // nope, stop
+            break;
+        }
+
+        // poll for data
+        struct pollfd fds[1];
+        fds[0].fd = clientSocket;
+        fds[0].events = POLLIN;
+
+        if (poll(fds, 1, 1) <= 0) {
+            // no data to read, loop to detect server shutdown
+            continue;
+        }
+
         // read command
         bzero(commandBuffer, (size_t) commandBufferSize);
-        if (read(clientSocket, commandBuffer, (size_t) commandBufferSize) < 0) {
+        ssize_t charsRead;
+        if ((charsRead = read(clientSocket, commandBuffer, (size_t) commandBufferSize)) < 0) {
             // something went horribly wrong
+            break;
+        }
+
+        // if it is 0, the connection has been closed
+        if (charsRead == 0) {
             break;
         }
 
@@ -131,6 +157,8 @@ void ForkForClient(int clientSocket) {
 
     // close the socket with the client
     close(clientSocket);
+
+    exit(EXIT_SUCCESS);
 }
 
 

@@ -93,8 +93,14 @@ Result RunClient() {
 
         // read the response
         bzero(outputBuffer, (size_t) outputBufferSize);
-        if (read(clientSocket, outputBuffer, (size_t) outputBufferSize) < 0) {
+        ssize_t charsRead;
+        if ((charsRead = read(clientSocket, outputBuffer, (size_t) outputBufferSize)) < 0) {
             RETURN_STANDARD_CRASH;
+        }
+
+        // if it is 0, the connection has been closed
+        if (charsRead == 0) {
+            RETURN_ERROR("Connection closed");
         }
 
         // print the response
