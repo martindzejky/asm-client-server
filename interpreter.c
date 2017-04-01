@@ -12,5 +12,10 @@ Result InterpretCommand(char *command, char *params, char *outputBuffer) {
         RETURN_OK;
     }
 
+    if (strcmp(command, "cat") == 0 || strcmp(command, "echo") == 0) {
+        strcat(outputBuffer, params);
+        RETURN_OK;
+    }
+
     RETURN_ERROR("Unknown command");
 }
