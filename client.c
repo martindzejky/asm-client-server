@@ -1,5 +1,6 @@
 #include <stdbool.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <ctype.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -60,8 +61,9 @@ Result RunClient() {
     Result result;
     CALL_AND_HANDLE_RESULT(MakeClientSocket());
 
-    // make a buffer for the commands
+    // make buffers
     char *buffer = malloc(sizeof(char) * commandBufferSize);
+    char *outputBuffer = malloc(sizeof(char) * outputBufferSize);
 
     // loop
     while (true) {
@@ -84,13 +86,26 @@ Result RunClient() {
             break;
         }
 
-        // TODO: Send to server and display the result
+        // send the command
+        if (write(clientSocket, buffer, strlen(buffer)) < 0) {
+            RETURN_STANDARD_CRASH;
+        }
+
+        // read the response
+        bzero(outputBuffer, (size_t) outputBufferSize);
+        if (read(clientSocket, outputBuffer, (size_t) outputBufferSize) < 0) {
+            RETURN_STANDARD_CRASH;
+        }
+
+        // print the response
+        printf("%s\n", outputBuffer);
 
         // free the buffer for command
         free(command);
     }
 
-    // release the buffer
+    // release the buffers
+    free(outputBuffer);
     free(buffer);
 
     CALL_AND_HANDLE_RESULT(FreeClientSocket());

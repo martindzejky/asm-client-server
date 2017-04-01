@@ -13,6 +13,7 @@
 #include "server.h"
 #include "prompt.h"
 #include "helpers.h"
+#include "interpreter.h"
 
 
 int serverSocket;
@@ -73,6 +74,66 @@ Result FreeServerSocket() {
 }
 
 
+void ForkForClient(int clientSocket) {
+    // fork a new process specially for the client
+    int pid = fork();
+
+    if (pid != 0) {
+        // either something crashed or this is the parent
+        return;
+    }
+
+    char *commandBuffer = malloc(sizeof(char) * commandBufferSize);
+    char *outputBuffer = malloc(sizeof(char) * outputBufferSize);
+
+    // run until the client closes the connection
+    while (true) {
+        // read command
+        bzero(commandBuffer, (size_t) commandBufferSize);
+        if (read(clientSocket, commandBuffer, (size_t) commandBufferSize) < 0) {
+            // something went horribly wrong
+            break;
+        }
+
+        char *command;
+        char *params;
+        SplitCommandParams(commandBuffer, &command, &params);
+
+        bzero(outputBuffer, (size_t) outputBufferSize);
+        Result interpretResult = InterpretCommand(command, params, outputBuffer);
+
+        if (interpretResult.type == OK) {
+            // if everything went well, send the output
+            if (write(clientSocket, outputBuffer, strlen(outputBuffer)) < 0) {
+                // something went horribly wrong
+                break;
+            }
+        } else if (interpretResult.type == ERROR) {
+            // if there was an error, send that
+            strcat(outputBuffer, "Error: ");
+            strcat(outputBuffer, interpretResult.description);
+
+            if (write(clientSocket, outputBuffer, strlen(outputBuffer)) < 0) {
+                // something went horribly wrong
+                break;
+            }
+        } else {
+            // something went horribly wrong
+            break;
+        }
+
+        // free the buffer for command
+        free(command);
+    }
+
+    free(outputBuffer);
+    free(commandBuffer);
+
+    // close the socket with the client
+    close(clientSocket);
+}
+
+
 Result ForkForAccepting(int *childPID) {
     // fork a new process for accepting incoming connections
     int pid = fork();
@@ -84,9 +145,7 @@ Result ForkForAccepting(int *childPID) {
     if (pid > 0) {
         // this is the parent, return and continue the execution
         *childPID = pid;
-        Result result;
-        result.type = OK;
-        return result;
+        RETURN_OK;
     }
 
     // as a child, run forever and accept connections
@@ -99,10 +158,12 @@ Result ForkForAccepting(int *childPID) {
         // accept a new socket connection
         int newSocket = accept(serverSocket, (struct sockaddr *) &clientAddress, &clientAddressSize);
         if (newSocket < 0) {
+            // there's no way to tell the parent process that there was an error
+            // so just keep accepting connections
             continue;
         }
 
-        // TODO: Fork a new worker
+        ForkForClient(newSocket);
     }
 #pragma clang diagnostic pop
 }
@@ -118,8 +179,9 @@ Result RunServer() {
     // the socket is now ready and accepting connections
     printf("Server started and accepting connections on port %d\n", socketPort);
 
-    // make a buffer for the commands
+    // make buffers
     char *buffer = malloc(sizeof(char) * commandBufferSize);
+    char *outputBuffer = malloc(sizeof(char) * outputBufferSize);
 
     // loop
     while (true) {
@@ -135,11 +197,24 @@ Result RunServer() {
             break;
         }
 
+        bzero(outputBuffer, (size_t) outputBufferSize);
+        Result interpretResult = InterpretCommand(command, params, outputBuffer);
+
+        // print the output if everything went well
+        if (interpretResult.type == OK) {
+            printf("%s\n", outputBuffer);
+        } else if (interpretResult.type == ERROR) {
+            printf("Error: %s\n", interpretResult.description);
+        } else {
+            return interpretResult;
+        }
+
         // free the buffer for command
         free(command);
     }
 
-    // release the buffer
+    // release the buffers
+    free(outputBuffer);
     free(buffer);
 
     // kill the accept child process

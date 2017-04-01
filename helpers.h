@@ -27,6 +27,19 @@
 
 
 /**
+ * Return a result with type ERROR and
+ * the specified error message.
+ *
+ * @note Defines a variable Result result
+ */
+#define RETURN_ERROR(message) \
+    Result result; \
+    result.type = ERROR; \
+    result.description = message; \
+    return result;
+
+
+/**
  * Return a result with type CRASH and
  * the specified error message.
  *
