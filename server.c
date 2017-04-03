@@ -225,6 +225,19 @@ Result RunServer() {
             break;
         }
 
+        // check for halt or close
+        if (strcmp(command, "halt") == 0 || strcmp(command, "close") == 0) {
+            // restart the process that waits for connections which should
+            // also close all connections
+            kill(acceptPID, SIGKILL);
+            CALL_AND_HANDLE_RESULT(ForkForAccepting(&acceptPID));
+
+            printf("Connections closed\n");
+
+            free(command);
+            continue;
+        }
+
         bzero(outputBuffer, (size_t) outputBufferSize);
         Result interpretResult = InterpretCommand(command, params, outputBuffer);
 

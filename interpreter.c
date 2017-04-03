@@ -23,6 +23,7 @@ Result InterpretCommand(char *command, char *params, char *outputBuffer) {
         strcat(outputBuffer, "ping - reply with pong, test connection\n");
         strcat(outputBuffer, "cat|echo text - echo the parameter text\n");
         strcat(outputBuffer, "help - print the list of commands\n");
+        strcat(outputBuffer, "halt|close (server only) - close all connections\n");
         //strcat(outputBuffer, "\n");
         RETURN_OK;
     }
