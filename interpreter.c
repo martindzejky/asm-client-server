@@ -17,5 +17,15 @@ Result InterpretCommand(char *command, char *params, char *outputBuffer) {
         RETURN_OK;
     }
 
+    if (strcmp(command, "help") == 0) {
+        strcat(outputBuffer, "Available commands:\n");
+        strcat(outputBuffer, "quit|exit - exit the program\n");
+        strcat(outputBuffer, "ping - reply with pong, test connection\n");
+        strcat(outputBuffer, "cat|echo text - echo the parameter text\n");
+        strcat(outputBuffer, "help - print the list of commands\n");
+        //strcat(outputBuffer, "\n");
+        RETURN_OK;
+    }
+
     RETURN_ERROR("Unknown command");
 }

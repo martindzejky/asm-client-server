@@ -61,6 +61,8 @@ Result RunClient() {
     Result result;
     CALL_AND_HANDLE_RESULT(MakeClientSocket());
 
+    printf("Connected to the server\n");
+
     // make buffers
     char *buffer = malloc(sizeof(char) * commandBufferSize);
     char *outputBuffer = malloc(sizeof(char) * outputBufferSize);
@@ -100,7 +102,7 @@ Result RunClient() {
 
         // if it is 0, the connection has been closed
         if (charsRead == 0) {
-            RETURN_ERROR("Connection closed");
+            RETURN_ERROR("Connection with server lost");
         }
 
         // print the response

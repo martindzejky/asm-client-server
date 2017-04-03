@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
 
     // check the result
     if (result.type != OK) {
-        printf("\n%s: %s\n", result.type == ERROR ? "Error" : "Crash", result.description);
+        printf("\n%s: %s\n", result.type == ERROR ? "Error" : "Fatal error", result.description);
     }
 
     return 0;
