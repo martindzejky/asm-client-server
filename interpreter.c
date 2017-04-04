@@ -19,32 +19,48 @@ Result HelpCommand(char *outputBuffer) {
 }
 
 
-Result InfoCommand(char *params, char *outputBuffer) {
-
-    struct timeval timeSinceEpoch;
+Result GetTime(struct timeval *timeSinceEpoch) {
     int errorCode;
-
-    // get time since epoch
     asm (
-    "syscall"                                         // call kernel
-    : "=a" (errorCode)                                // outputs - error code
-    : "a" (0x2000074), "D" (&timeSinceEpoch), "S" (0) // inputs - syscall number, struct timeval tp, void tzp
-    : "memory"                                        // changed registers
+    "syscall"                                        // call kernel
+    : "=a" (errorCode)                               // outputs - error code
+    : "a" (0x2000074), "D" (timeSinceEpoch), "S" (0) // inputs - syscall number, struct timeval tp, void tzp
+    : "memory"                                       // changed registers
     );
 
     if (errorCode < 0) {
         RETURN_STANDARD_CRASH;
     }
 
+    RETURN_OK;
+}
+
+
+Result InfoCommand(char *params, char *outputBuffer) {
+
     if (strcmp(params, "date") == 0) {
+        struct timeval timeSinceEpoch;
+        {
+            Result result;
+            CALL_AND_HANDLE_RESULT(GetTime(&timeSinceEpoch));
+        }
+
         strftime(outputBuffer, (size_t) outputBufferSize, "Current time is %d. %m. %Y",
                  localtime(&timeSinceEpoch.tv_sec));
+
         RETURN_OK;
     }
 
     if (strcmp(params, "time") == 0) {
+        struct timeval timeSinceEpoch;
+        {
+            Result result;
+            CALL_AND_HANDLE_RESULT(GetTime(&timeSinceEpoch));
+        }
+
         strftime(outputBuffer, (size_t) outputBufferSize, "Current time is %H:%M:%S",
                  localtime(&timeSinceEpoch.tv_sec));
+
         RETURN_OK;
     }
 
