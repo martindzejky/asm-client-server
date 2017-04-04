@@ -1,6 +1,56 @@
 #include <string.h>
+#include <sys/time.h>
+#include <errno.h>
 #include "interpreter.h"
 #include "helpers.h"
+#include "constants.h"
+
+
+Result HelpCommand(char *outputBuffer) {
+    strcat(outputBuffer, "Available commands:\n");
+    strcat(outputBuffer, "quit|exit - exit the program\n");
+    strcat(outputBuffer, "ping - reply with pong, test connection\n");
+    strcat(outputBuffer, "cat|echo text - echo the parameter text\n");
+    strcat(outputBuffer, "help - print the list of commands\n");
+    strcat(outputBuffer, "halt|close (server only) - close all connections\n");
+    strcat(outputBuffer,
+           "info [date|time|cpu|ram] - display useful information, current date, time, cpu, and ram usage\n");
+    RETURN_OK;
+}
+
+
+Result InfoCommand(char *params, char *outputBuffer) {
+
+    struct timeval timeSinceEpoch;
+    int errorCode;
+
+    // get time since epoch
+    asm (
+    "syscall"                                         // call kernel
+    : "=a" (errorCode)                                // outputs - error code
+    : "a" (0x2000074), "D" (&timeSinceEpoch), "S" (0) // inputs - syscall number, struct timeval tp, void tzp
+    : "memory"                                        // changed registers
+    );
+
+    if (errorCode < 0) {
+        RETURN_STANDARD_CRASH;
+    }
+
+    if (strcmp(params, "date") == 0) {
+        strftime(outputBuffer, (size_t) outputBufferSize, "Current time is %d. %m. %Y",
+                 localtime(&timeSinceEpoch.tv_sec));
+        RETURN_OK;
+    }
+
+    if (strcmp(params, "time") == 0) {
+        strftime(outputBuffer, (size_t) outputBufferSize, "Current time is %H:%M:%S",
+                 localtime(&timeSinceEpoch.tv_sec));
+        RETURN_OK;
+    }
+
+    // by default show usage
+    RETURN_ERROR("Usage: info [date|time|cpu|ram]");
+}
 
 
 Result InterpretCommand(char *command, char *params, char *outputBuffer) {
@@ -18,14 +68,11 @@ Result InterpretCommand(char *command, char *params, char *outputBuffer) {
     }
 
     if (strcmp(command, "help") == 0) {
-        strcat(outputBuffer, "Available commands:\n");
-        strcat(outputBuffer, "quit|exit - exit the program\n");
-        strcat(outputBuffer, "ping - reply with pong, test connection\n");
-        strcat(outputBuffer, "cat|echo text - echo the parameter text\n");
-        strcat(outputBuffer, "help - print the list of commands\n");
-        strcat(outputBuffer, "halt|close (server only) - close all connections\n");
-        //strcat(outputBuffer, "\n");
-        RETURN_OK;
+        return HelpCommand(outputBuffer);
+    }
+
+    if (strcmp(command, "info") == 0) {
+        return InfoCommand(params, outputBuffer);
     }
 
     RETURN_ERROR("Unknown command");

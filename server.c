@@ -33,6 +33,10 @@ void SplitCommandParams(char *buffer, char **command, char **params) {
 
     // set pointer to params
     *params = buffer + commandSize + 1;
+
+    // get rid of whitespace at the end of params
+    size_t paramsLen = strlen(*params);
+    (*params)[paramsLen - 1] = 0;
 }
 
 
