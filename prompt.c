@@ -17,6 +17,7 @@ void PrintPrompt() {
 
     // print the prompt
     printf("Enter command: ");
+    fflush(stdout);
 }
 
 
