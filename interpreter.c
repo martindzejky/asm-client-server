@@ -1,6 +1,8 @@
 #include <string.h>
 #include <sys/time.h>
 #include <errno.h>
+#include <stdio.h>
+#include <sys/resource.h>
 #include "interpreter.h"
 #include "helpers.h"
 #include "constants.h"
@@ -9,12 +11,15 @@
 Result HelpCommand(char *outputBuffer) {
     strcat(outputBuffer, "Available commands:\n");
     strcat(outputBuffer, "quit|exit - exit the program\n");
+    strcat(outputBuffer, "halt|close (server only) - close all connections\n");
+
     strcat(outputBuffer, "ping - reply with pong, test connection\n");
     strcat(outputBuffer, "cat|echo text - echo the parameter text\n");
     strcat(outputBuffer, "help - print the list of commands\n");
-    strcat(outputBuffer, "halt|close (server only) - close all connections\n");
+
     strcat(outputBuffer,
            "info [date|time|cpu|ram] - display useful information, current date, time, cpu, and ram usage\n");
+
     RETURN_OK;
 }
 
@@ -22,15 +27,38 @@ Result HelpCommand(char *outputBuffer) {
 Result GetTime(struct timeval *timeSinceEpoch) {
     int errorCode;
     asm (
-    "syscall"                                        // call kernel
-    : "=a" (errorCode)                               // outputs - error code
-    : "a" (0x2000074), "D" (timeSinceEpoch), "S" (0) // inputs - syscall number, struct timeval tp, void tzp
-    : "memory"                                       // changed registers
+        "syscall"                                        // call kernel
+        : "=a" (errorCode)                               // outputs - error code
+        : "a" (0x2000074), "D" (timeSinceEpoch), "S" (0) // inputs - syscall number, struct timeval tp, void* tzp
+        : "memory"                                       // changed registers
     );
 
     if (errorCode < 0) {
         RETURN_STANDARD_CRASH;
     }
+
+    RETURN_OK;
+}
+
+
+Result GetCpuTime(float *cpuTime) {
+    // get cpu time of process
+    int errorCode;
+    struct rusage cpuUsage;
+    asm (
+        "syscall"                                             // call kernel
+        : "=a" (errorCode)                                    // outputs - error code
+        : "a" (0x2000075), "D" (RUSAGE_SELF), "S" (&cpuUsage) // inputs - syscall number, int who, struct rusage*
+        : "memory"                                            // changed registers
+    );
+
+    if (errorCode < 0) {
+        RETURN_STANDARD_CRASH;
+    }
+
+    // get total time in milliseconds
+    *cpuTime = cpuUsage.ru_utime.tv_usec + cpuUsage.ru_stime.tv_usec;
+    *cpuTime /= 1000.f;
 
     RETURN_OK;
 }
@@ -60,6 +88,18 @@ Result InfoCommand(char *params, char *outputBuffer) {
 
         strftime(outputBuffer, (size_t) outputBufferSize, "Current time is %H:%M:%S",
                  localtime(&timeSinceEpoch.tv_sec));
+
+        RETURN_OK;
+    }
+
+    if (strcmp(params, "cpu") == 0) {
+        float cpuTime;
+        {
+            Result result;
+            CALL_AND_HANDLE_RESULT(GetCpuTime(&cpuTime));
+        }
+
+        sprintf(outputBuffer, "Used processor time is %.3f ms\n", cpuTime);
 
         RETURN_OK;
     }
