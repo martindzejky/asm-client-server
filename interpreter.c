@@ -3,6 +3,10 @@
 #include <errno.h>
 #include <stdio.h>
 #include <sys/resource.h>
+#include <mach/task_info.h>
+#include <mach/task.h>
+#include <mach/mach_init.h>
+#include <unistd.h>
 #include "interpreter.h"
 #include "helpers.h"
 #include "constants.h"
@@ -64,7 +68,34 @@ Result GetCpuTime(float *cpuTime) {
 }
 
 
+Result GetMemoryUsage(float *residentSize, float *virtualSize) {
+    mach_msg_type_number_t outCount = MACH_TASK_BASIC_INFO_COUNT;
+    mach_task_basic_info_data_t taskInfo;
+
+    if (task_info(mach_task_self(), MACH_TASK_BASIC_INFO, (task_info_t) &taskInfo, &outCount) != KERN_SUCCESS) {
+        RETURN_CRASH("Failed to get task info");
+    }
+
+    // get used memory
+    *residentSize = taskInfo.resident_size;
+    *virtualSize = taskInfo.virtual_size;
+
+    // multiply by page size
+    float pageSize = getpagesize();
+    *residentSize *= pageSize;
+    *virtualSize *= pageSize;
+
+    // convert to kilobytes
+    *residentSize /= 1000.f;
+    *virtualSize /= 1000.f;
+
+    RETURN_OK;
+}
+
+
 Result InfoCommand(char *params, char *outputBuffer) {
+    // compare the params to the 4 possible options, run the
+    // appropriate function to fetch the data, or return an error
 
     if (strcmp(params, "date") == 0) {
         struct timeval timeSinceEpoch;
@@ -100,6 +131,20 @@ Result InfoCommand(char *params, char *outputBuffer) {
         }
 
         sprintf(outputBuffer, "Used processor time is %.3f ms\n", cpuTime);
+
+        RETURN_OK;
+    }
+
+    if (strcmp(params, "ram") == 0) {
+        float residentUsage;
+        float virtualUsage;
+        {
+            Result result;
+            CALL_AND_HANDLE_RESULT(GetMemoryUsage(&residentUsage, &virtualUsage));
+        }
+
+        sprintf(outputBuffer, "Used resident memory is %.3f kB\nUsed virtual memory is %.3f kB\n",
+                residentUsage, virtualUsage);
 
         RETURN_OK;
     }
