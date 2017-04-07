@@ -25,6 +25,7 @@ int main(int argc, char *argv[]) {
         printf("-s Start a server\n");
         printf("-c Start a client\n");
         printf("-p port Specify the port number (default is 56443)\n");
+        printf("-t timeout Set a timeout after which idle connections will be terminated (server only) (default is none)\n");
 
         return 1;
     }

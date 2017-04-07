@@ -4,7 +4,7 @@
 #include "constants.h"
 
 
-char *permittedOptions = "hscp:";
+char *permittedOptions = "hscp:t:";
 
 
 Options *options = NULL;
@@ -24,6 +24,7 @@ void ParseOptions(int argc, char *argv[]) {
     options->startClient = false;
     options->displayHelp = false;
     options->port = socketPort;
+    options->timeout = -1;
 
     // parse command line arguments
     int flag;
@@ -45,6 +46,10 @@ void ParseOptions(int argc, char *argv[]) {
 
             case 'p':
                 options->port = atoi(optarg);
+                break;
+
+            case 't':
+                options->timeout = atoi(optarg);
                 break;
 
             default:

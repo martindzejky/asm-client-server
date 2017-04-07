@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <poll.h>
+#include <time.h>
 #include "constants.h"
 #include "server.h"
 #include "prompt.h"
@@ -95,12 +96,27 @@ void ForkForClient(int clientSocket) {
     char *commandBuffer = malloc(sizeof(char) * commandBufferSize);
     char *outputBuffer = malloc(sizeof(char) * outputBufferSize);
 
+    time_t lastTimeActive;
+    time(&lastTimeActive);
+
     // run until the client closes the connection
     while (true) {
         // check if the server is still running
         if (getppid() != parentPID) {
             // nope, stop
             break;
+        }
+
+        // check for timeout
+        Options *options = GetOptions();
+        if (options->timeout > 0) {
+            time_t currentTime;
+            time(&currentTime);
+
+            if (difftime(currentTime, lastTimeActive) > options->timeout) {
+                // close the connection
+                break;
+            }
         }
 
         // poll for data
@@ -125,6 +141,9 @@ void ForkForClient(int clientSocket) {
         if (charsRead == 0) {
             break;
         }
+
+        // reset timer
+        time(&lastTimeActive);
 
         char *command;
         char *params;
@@ -197,6 +216,9 @@ Result ForkForAccepting(int *childPID) {
         }
 
         ForkForClient(newSocket);
+
+        // close the socket since we don't need it in this process
+        close(newSocket);
     }
 #pragma clang diagnostic pop
 }

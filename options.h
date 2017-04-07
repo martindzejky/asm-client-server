@@ -12,6 +12,7 @@ typedef struct Options {
     bool startClient;
     bool displayHelp;
     int port;
+    int timeout;
 
 } Options;
 
