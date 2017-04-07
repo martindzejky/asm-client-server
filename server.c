@@ -15,6 +15,7 @@
 #include "prompt.h"
 #include "helpers.h"
 #include "interpreter.h"
+#include "options.h"
 
 
 int serverSocket;
@@ -50,7 +51,7 @@ Result MakeServerSocket() {
     // make an address to bind to
     struct sockaddr_in address;
     address.sin_family = AF_INET;
-    address.sin_port = htons(socketPort); // TODO: Allow specifying the port
+    address.sin_port = htons(GetOptions()->port);
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_len = 0;
     bzero(address.sin_zero, 8);
@@ -209,7 +210,7 @@ Result RunServer() {
     CALL_AND_HANDLE_RESULT(ForkForAccepting(&acceptPID));
 
     // the socket is now ready and accepting connections
-    printf("Server started and accepting connections on port %d\n", socketPort);
+    printf("Server started and accepting connections on port %d\n", GetOptions()->port);
 
     // make buffers
     char *buffer = malloc(sizeof(char) * commandBufferSize);

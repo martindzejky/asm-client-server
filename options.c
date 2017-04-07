@@ -1,9 +1,10 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include "options.h"
+#include "constants.h"
 
 
-char *permittedOptions = "hsc";
+char *permittedOptions = "hscp:";
 
 
 Options *options = NULL;
@@ -22,6 +23,7 @@ void ParseOptions(int argc, char *argv[]) {
     options->startServer = true;
     options->startClient = false;
     options->displayHelp = false;
+    options->port = socketPort;
 
     // parse command line arguments
     int flag;
@@ -39,6 +41,10 @@ void ParseOptions(int argc, char *argv[]) {
             case 'c':
                 options->startServer = false;
                 options->startClient = true;
+                break;
+
+            case 'p':
+                options->port = atoi(optarg);
                 break;
 
             default:

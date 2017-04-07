@@ -24,6 +24,7 @@ int main(int argc, char *argv[]) {
         printf("-h Display this help\n");
         printf("-s Start a server\n");
         printf("-c Start a client\n");
+        printf("-p port Specify the port number (default is 56443)\n");
 
         return 1;
     }

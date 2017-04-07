@@ -11,6 +11,7 @@ typedef struct Options {
     bool startServer;
     bool startClient;
     bool displayHelp;
+    int port;
 
 } Options;
 

@@ -12,6 +12,7 @@
 #include "client.h"
 #include "prompt.h"
 #include "helpers.h"
+#include "options.h"
 
 
 int clientSocket;
@@ -27,13 +28,13 @@ Result MakeClientSocket() {
     // get information about the host
     struct hostent *server = gethostbyname("localhost"); // TODO: Allow specifying the host
     if (server == NULL) {
-        RETURN_CRASH("No hostname localhost found");
+        RETURN_CRASH("No hostname localhost found, WTF");
     }
 
     // make an address to connect to
     struct sockaddr_in address;
     address.sin_family = AF_INET;
-    address.sin_port = htons(socketPort); // TODO: Allow specifying the port
+    address.sin_port = htons(GetOptions()->port);
     address.sin_len = 0;
     bcopy(server->h_addr, &address.sin_addr.s_addr, (size_t) server->h_length);
     bzero(address.sin_zero, 8);
@@ -59,8 +60,9 @@ Result FreeClientSocket() {
 
 Result RunClient() {
     Result result;
-    CALL_AND_HANDLE_RESULT(MakeClientSocket());
 
+    printf("Connecting to a server at localhost:%d\n", GetOptions()->port); // TODO: Allow changing hostname
+    CALL_AND_HANDLE_RESULT(MakeClientSocket());
     printf("Connected to the server\n");
 
     // make buffers
