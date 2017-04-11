@@ -154,7 +154,37 @@ Result InfoCommand(char *params, char *outputBuffer) {
 }
 
 
-Result InterpretCommand(char *command, char *params, char *outputBuffer) {
+Result RunBashCommand(char *commandBuffer, char *outputBuffer) {
+    // redirect stderr
+    strcat(commandBuffer, " 2>&1");
+
+    // open the file descriptor for the shell
+    FILE *shell = popen(commandBuffer, "r");
+
+    if (shell == NULL) {
+        RETURN_STANDARD_CRASH;
+    }
+
+    // get the output
+    size_t charsRead = fread(outputBuffer, sizeof(char), (size_t) outputBufferSize, shell);
+    outputBuffer[charsRead] = 0;
+
+    if (ferror(shell) != 0) {
+        RETURN_STANDARD_CRASH;
+    }
+
+    pclose(shell);
+
+    // check if command was found
+    if (strstr(outputBuffer, "command not found") != NULL) {
+        RETURN_ERROR("Command not found");
+    }
+
+    RETURN_OK;
+}
+
+
+Result InterpretCommand(char *command, char *params, char *commandBuffer, char *outputBuffer) {
     // figure out what command was passed in,
     // this is like a huge switch
 
@@ -176,5 +206,6 @@ Result InterpretCommand(char *command, char *params, char *outputBuffer) {
         return InfoCommand(params, outputBuffer);
     }
 
-    RETURN_ERROR("Unknown command");
+    // try running the command in bash
+    return RunBashCommand(commandBuffer, outputBuffer);
 }

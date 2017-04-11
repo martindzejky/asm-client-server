@@ -150,7 +150,7 @@ void ForkForClient(int clientSocket) {
         SplitCommandParams(commandBuffer, &command, &params);
 
         bzero(outputBuffer, (size_t) outputBufferSize);
-        Result interpretResult = InterpretCommand(command, params, outputBuffer);
+        Result interpretResult = InterpretCommand(command, params, commandBuffer, outputBuffer);
 
         if (interpretResult.type == OK) {
             // if everything went well, send the output
@@ -266,7 +266,7 @@ Result RunServer() {
         }
 
         bzero(outputBuffer, (size_t) outputBufferSize);
-        Result interpretResult = InterpretCommand(command, params, outputBuffer);
+        Result interpretResult = InterpretCommand(command, params, buffer, outputBuffer);
 
         // print the output if everything went well
         if (interpretResult.type == OK) {
