@@ -160,7 +160,7 @@ Result InfoCommand(char *params, char *outputBuffer) {
 
 Result RunCommandWithBuffer(char *fileBuffer, char *outputBuffer) {
     // counters
-    int lineCount = 0;
+    int lineCount = 1;
     int wordCount = 0;
     int charCount = 0;
 
@@ -184,6 +184,11 @@ Result RunCommandWithBuffer(char *fileBuffer, char *outputBuffer) {
         } else {
             inWord = true;
         }
+    }
+
+    // if last char was word, add it in
+    if (inWord) {
+        wordCount++;
     }
 
     // print the result

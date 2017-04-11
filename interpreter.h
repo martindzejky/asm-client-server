@@ -4,6 +4,16 @@
 
 
 /**
+ * Interpret the run command with file contents already read in the buffer.
+ *
+ * @param fileBuffer Buffer with file contents
+ * @param outputBuffer Output buffer
+ * @return Result of the operation
+ */
+Result RunCommandWithBuffer(char *fileBuffer, char *outputBuffer);
+
+
+/**
  * Interpret a command from the user.
  *
  * @param command The command to interpret

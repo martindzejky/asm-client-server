@@ -149,8 +149,28 @@ void ForkForClient(int clientSocket) {
         char *params;
         SplitCommandParams(commandBuffer, &command, &params);
 
+        Result interpretResult;
         bzero(outputBuffer, (size_t) outputBufferSize);
-        Result interpretResult = InterpretCommand(command, params, commandBuffer, outputBuffer);
+
+        // check for runc, it requires special handling
+        if (strcmp(command, "runc") == 0) {
+            // receive the file contents
+            char *fileBuffer = malloc(sizeof(char) * fileBufferSize);
+
+            if (read(clientSocket, fileBuffer, (size_t) fileBufferSize) < 0) {
+                // something went horribly wrong
+                break;
+            }
+
+            // interpret
+            interpretResult = RunCommandWithBuffer(fileBuffer, outputBuffer);
+
+            // clean up
+            free(fileBuffer);
+        }
+        else {
+            interpretResult = InterpretCommand(command, params, commandBuffer, outputBuffer);
+        }
 
         if (interpretResult.type == OK) {
             // if everything went well, send the output

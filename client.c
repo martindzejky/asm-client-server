@@ -58,6 +58,32 @@ Result FreeClientSocket() {
 }
 
 
+Result ReadFile(char *params, char *fileBuffer) {
+    // check if file name was passed in
+    if (strlen(params) == 0) {
+        RETURN_ERROR("Usage: run filename");
+    }
+
+    // open the file
+    FILE *file;
+    if ((file = fopen(params, "r")) == NULL) {
+        // handle file not found
+        if (errno == ENOENT) {
+            RETURN_ERROR("File not found");
+        } else {
+            RETURN_STANDARD_CRASH;
+        }
+    }
+
+    // read file contents into a buffer
+    size_t charsRead = fread(fileBuffer, sizeof(char), (size_t) fileBufferSize, file);
+    fileBuffer[charsRead] = 0;
+
+    fclose(file);
+    RETURN_OK;
+}
+
+
 Result RunClient() {
     Result result;
 
@@ -90,9 +116,35 @@ Result RunClient() {
             break;
         }
 
-        // send the command
-        if (write(clientSocket, buffer, strlen(buffer)) < 0) {
-            RETURN_STANDARD_CRASH;
+        // check run, it requires that we send the file contents
+        if (strcmp(command, "run") == 0) {
+            // read the file
+            char *fileBuffer = malloc(sizeof(char) * fileBufferSize);
+            buffer[strlen(buffer) - 1] = 0;
+            Result readFileResult = ReadFile(buffer + commandSize + 1, fileBuffer);
+
+            // check if file exists
+            if (readFileResult.type == ERROR) {
+                printf("Error: %s\n", readFileResult.description);
+                continue;
+            }
+
+            // send the command
+            if (write(clientSocket, "runc", 5) < 0) {
+                RETURN_STANDARD_CRASH;
+            }
+
+            // send the file contents
+            if (write(clientSocket, fileBuffer, strlen(fileBuffer)) < 0) {
+                RETURN_STANDARD_CRASH;
+            }
+
+            free(fileBuffer);
+        } else {
+            // send the command and params normally
+            if (write(clientSocket, buffer, strlen(buffer)) < 0) {
+                RETURN_STANDARD_CRASH;
+            }
         }
 
         // read the response
@@ -110,7 +162,7 @@ Result RunClient() {
         // print the response
         printf("%s\n", outputBuffer);
 
-        // free the buffer for command
+        // free the buffers
         free(command);
     }
 
