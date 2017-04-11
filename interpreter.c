@@ -7,6 +7,9 @@
 #include <mach/task.h>
 #include <mach/mach_init.h>
 #include <unistd.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <ctype.h>
 #include "interpreter.h"
 #include "helpers.h"
 #include "constants.h"
@@ -21,6 +24,7 @@ Result HelpCommand(char *outputBuffer) {
     strcat(outputBuffer, "cat|echo text - echo the parameter text\n");
     strcat(outputBuffer, "help - print the list of commands\n");
 
+    strcat(outputBuffer, "run filename - parse file and print the number of lines, words, and characters\n");
     strcat(outputBuffer,
            "info [date|time|cpu|ram] - display useful information, current date, time, cpu, and ram usage\n");
 
@@ -154,6 +158,76 @@ Result InfoCommand(char *params, char *outputBuffer) {
 }
 
 
+Result RunCommandWithBuffer(char *fileBuffer, char *outputBuffer) {
+    // counters
+    int lineCount = 0;
+    int wordCount = 0;
+    int charCount = 0;
+
+    bool inWord = false;
+
+    for (int i = 0; fileBuffer[i]; i++) {
+        // update counters
+        charCount++;
+
+        if (fileBuffer[i] == '\n') {
+            lineCount++;
+        }
+
+        // handle words, check if this is white space and update inWord flag
+        if (isspace(fileBuffer[i])) {
+            if (inWord) {
+                wordCount++;
+            }
+
+            inWord = false;
+        } else {
+            inWord = true;
+        }
+    }
+
+    // print the result
+    sprintf(outputBuffer, "File statistics:\n  Line count: %d\n  Word count: %d\n  Character count: %d\n",
+            lineCount, wordCount, charCount);
+
+    RETURN_OK;
+}
+
+
+Result RunCommand(char *params, char *outputBuffer) {
+    // check if file name was passed in
+    if (strlen(params) == 0) {
+        RETURN_ERROR("Usage: run filename");
+    }
+
+    // open the file
+    FILE *file;
+    if ((file = fopen(params, "r")) == NULL) {
+        // handle file not found
+        if (errno == ENOENT) {
+            RETURN_ERROR("File not found");
+        } else {
+            RETURN_STANDARD_CRASH;
+        }
+    }
+
+    // make a buffer for the file contents
+    char *fileBuffer = malloc(sizeof(char) * fileBufferSize);
+
+    // read file contents into a buffer
+    size_t charsRead = fread(fileBuffer, sizeof(char), (size_t) fileBufferSize, file);
+    fileBuffer[charsRead] = 0;
+
+    Result result = RunCommandWithBuffer(fileBuffer, outputBuffer);
+
+    // clear up
+    free(fileBuffer);
+    fclose(file);
+
+    return result;
+}
+
+
 Result RunBashCommand(char *commandBuffer, char *outputBuffer) {
     // redirect stderr
     strcat(commandBuffer, " 2>&1");
@@ -204,6 +278,10 @@ Result InterpretCommand(char *command, char *params, char *commandBuffer, char *
 
     if (strcmp(command, "info") == 0) {
         return InfoCommand(params, outputBuffer);
+    }
+
+    if (strcmp(command, "run") == 0) {
+        return RunCommand(params, outputBuffer);
     }
 
     // try running the command in bash

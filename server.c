@@ -274,7 +274,10 @@ Result RunServer() {
         } else if (interpretResult.type == ERROR) {
             printf("Error: %s\n", interpretResult.description);
         } else {
-            return interpretResult;
+            // crash, but release buffers and sockets before that
+            result = interpretResult;
+            free(command);
+            break;
         }
 
         // free the buffer for command
@@ -288,7 +291,9 @@ Result RunServer() {
     // kill the accept child process
     kill(acceptPID, SIGKILL);
 
+    Result originalResult = result;
     CALL_AND_HANDLE_RESULT(FreeServerSocket());
+    result = originalResult;
 
     return result;
 }
